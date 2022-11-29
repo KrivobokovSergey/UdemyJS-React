@@ -47,7 +47,9 @@ console.log(getTimeFromMinutes(-150));
 
 // Вторая задача
 function findMaxNumber(first, second, third, fourth) {
-    if (first === undefined || second === undefined || third === undefined || fourth === undefined || typeof(first) == 'string' || typeof(second) == 'string' || typeof(third) == 'string' || typeof(fourth) == 'string') {
+    if (first === undefined || second === undefined || third === undefined || fourth === undefined ||
+        typeof (first) == 'string' || typeof (second) == 'string' || typeof (third) == 'string' ||
+        typeof (fourth) == 'string') {
         return 0;
     }
     let maxNumber = Math.max(first, second, third, fourth);
