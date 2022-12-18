@@ -574,6 +574,7 @@ a {
   height: 100%;
   overflow: hidden;
   background-color: rgba(0, 0, 0, 0.5);
+  transition: all 0.5s;
 }
 .modal__dialog {
   max-width: 500px;
@@ -623,4 +624,7 @@ a {
   display: block;
   width: 280px;
   margin: 0 auto;
+}
+.modal__active {
+  display: block;
 }
