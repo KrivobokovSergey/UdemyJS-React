@@ -36,7 +36,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 
     //Timer
-    const deadline = '2022-12-31';
+    const deadline = '2023-01-31';
 
     function getTimeRemaining(endTime) {
         const t = Date.parse(endTime) - Date.parse(new Date()),
@@ -172,32 +172,22 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    new MenuCard(
-        "img/tabs/vegy.jpg",
-        "vegy",
-        'Меню "Фитнес"',
-        'Меню "Фитнес" - это новый подход к приготовлению блюд: больше свежих овощей и фруктов. Продукт активных и здоровых людей. Это абсолютно новый продукт с оптимальной ценой и высоким качеством!',
-        9,
-        '.menu .container'
-    ).render();
+    const getResource = async (url) => {
+        const res = await fetch(url);
 
-    new MenuCard(
-        "img/tabs/elite.jpg",
-        "elite",
-        'Меню “Премиум”',
-        'В меню “Премиум” мы используем не только красивый дизайн упаковки, но и качественное исполнение блюд. Красная рыба, морепродукты, фрукты - ресторанное меню без похода в ресторан!',
-        14,
-        '.menu .container'
-    ).render();
+        if (!res.ok) {
+            throw new Error(`Could not fetch ${url}, status: ${res.status} `);
+        }
 
-    new MenuCard(
-        "img/tabs/post.jpg",
-        "post",
-        'Меню "Постное"',
-        'Меню “Постное” - это тщательный подбор ингредиентов: полное отсутствие продуктов животного происхождения, молоко из миндаля, овса, кокоса или гречки, правильное количество белков за счет тофу и импортных вегетарианских стейков.',
-        16,
-        '.menu .container'
-    ).render();
+        return await res.json();
+    };
+
+    getResource('http://localhost:3000/menu')
+        .then(data => {
+            data.forEach(({img, altimg, title, descr, price}) => {
+                new MenuCard(img, altimg, title, descr, price, '.menu .container').render();
+            });
+        });
 
     //Server
 
@@ -209,40 +199,45 @@ window.addEventListener('DOMContentLoaded', () => {
     };
 
     forms.forEach(item => {
-        postData(item);
+        bindPostData(item);
     });
 
-    function postData(form) {
+    const postData = async (url, data) => {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-type': 'application/json'
+            },
+            body: data
+        });
+
+        return await res.json();
+    };
+
+    function bindPostData(form) {
         form.addEventListener('submit', (e) => {
             e.preventDefault();
 
-            const statusMessage = document.createElement('div');
+            let statusMessage = document.createElement('div');
             statusMessage.classList.add('status');
             statusMessage.textContent = message.loading;
             form.append(statusMessage);
 
-            const request = new XMLHttpRequest();
-            request.open('POST', 'server.php');
-            request.setRequestHeader('Content-type', 'application/json');
-
             const formData = new FormData(form);
-            const object = {};
-            formData.forEach(function (value, key) {
-                object[key] = value;
+            console.log(formData);
+            const json = JSON.stringify(Object.fromEntries(formData.entries()));
+
+            postData('http://localhost:3000/requests', json)
+            .then(data => {
+                console.log(data);
+                showThanksModal(message.success);
+                statusMessage.remove();
+            }).catch(() => {
+                showThanksModal(message.failure);
+            }).finally(() => {
+                form.reset();
             });
 
-            request.send(JSON.stringify(object));
-
-            request.addEventListener('load', () => {
-                if (request.status === 200) {
-                    console.log(request.response);
-                    showThanksModal(message.success);
-                    form.reset();
-                    statusMessage.remove();
-                } else {
-                    showThanksModal(message.failure);
-                }
-            });
         });
     }
 
@@ -269,4 +264,133 @@ window.addEventListener('DOMContentLoaded', () => {
             closeModal();
         }, 4000);
     }
+
+    fetch('db.json')
+        .then(data => data.json())
+        .then(res => console.log(res));
+    
+    // My slider
+
+    const sliders = document.querySelectorAll('.offer__slide'),
+        current = document.querySelector('#current'),
+        total = document.querySelector('#total'),
+        prevBtn = document.querySelector('.offer__slider-prev'),
+        nextBtn = document.querySelector('.offer__slider-next'),
+        slidesWrapper = document.querySelector('.offer__slider-wrapper'),
+        slidesField = document.querySelector('.offer__slider-inner'),
+        width = window.getComputedStyle(slidesWrapper).width;
+    let sliderIndex = 1,
+        offset = 0;
+    
+    if (sliders.length < 10) {
+        total.textContent = `0${sliders.length}`;
+        current.textContent = `0${sliderIndex}`;
+    } else {
+        total.textContent = sliders.length;
+        current.textContent = sliderIndex;
+    }
+
+    slidesField.style.width = 100 * sliders.length + '%';
+    slidesField.style.display = 'flex';
+    slidesField.style.transition = '0.5s all';
+    slidesWrapper.style.overflow = 'hidden';
+    sliders.forEach(slide => { 
+        slide.style.width = width;
+    });
+    nextBtn.addEventListener('click', () => {
+        if (offset == +width.slice(0, width.length - 2) * (sliders.length - 1)) {
+            offset = 0;
+        } else {
+            offset += +width.slice(0, width.length - 2);
+        }
+        slidesField.style.transform = `translateX(-${offset}px)`;
+
+        if (sliderIndex == sliders.length) {
+            sliderIndex = 1;
+        } else {
+            sliderIndex++;
+        }
+
+        if (sliders.length < 10) {
+            current.textContent = `0${sliderIndex}`;
+        } else {
+            current.textContent = sliderIndex;
+        }
+    });
+
+    prevBtn.addEventListener('click', () => {
+        if (offset == 0) {
+            offset = +width.slice(0, width.length - 2) * (sliders.length - 1);
+        } else {
+            offset -= +width.slice(0, width.length - 2);
+        }
+        slidesField.style.transform = `translateX(-${offset}px)`;
+
+        if (sliderIndex == 1) {
+            sliderIndex = sliders.length;
+        } else {
+            sliderIndex--;
+        }
+
+        if (sliders.length < 10) {
+            current.textContent = `0${sliderIndex}`;
+        } else {
+            current.textContent = sliderIndex;
+        }
+    });
+    
+    // current.textContent = `01`;
+    // if (sliders.length < 10) {
+    //     total.textContent = `0${sliders.length}`;
+    // } else {
+    //     total.textContent = `${sliders.length}`;
+    // }
+    
+    // sliders.forEach((slider, i) => {
+    //     if (i !== 0) {
+    //         slider.style.display = 'none';
+    //     }
+    // });
+
+    // function runNextSlider() {
+    //     if (+current.textContent == sliders.length) {
+    //         sliders[sliders.length - 1].style.display = 'none';
+    //         sliders[0].style.display = '';
+    //         current.textContent = `01`;
+    //     } else {
+    //         sliders[+current.textContent - 1].style.display = 'none';
+    //         sliders[+current.textContent].style.display = '';
+    //         if (+current.textContent > 8) {
+    //             current.textContent = `${+current.textContent + 1}`;
+    //         } else {
+    //             current.textContent = `0${+current.textContent + 1}`;
+    //         }
+    //     }
+    // }
+    // function runPrevSlider() {
+    //     if (+current.textContent == 1) {
+    //         sliders[0].style.display = 'none';
+    //         sliders[sliders.length - 1].style.display = '';
+    //         if (sliders.length > 9) {
+    //             current.textContent = `${sliders.length}`;
+    //         } else {
+    //             current.textContent = `0${sliders.length}`;
+    //         }
+    //     } else {
+    //         sliders[+current.textContent - 1].style.display = 'none';
+    //         sliders[+current.textContent - 2].style.display = '';
+    //         if (+current.textContent > 10) {
+    //             current.textContent = `${+current.textContent - 1}`;
+    //         } else {
+    //             current.textContent = `0${+current.textContent - 1}`;
+    //         }
+    //     }
+    // }
+
+    // nextBtn.addEventListener('click', () => runNextSlider());
+    // prevBtn.addEventListener('click', () => runPrevSlider());
+
+    // Slider Carusel
+
+
 });
